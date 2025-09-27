@@ -7,78 +7,108 @@ plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.rcParams['axes.unicode_minus'] = False
 
 def create_performance_data():
-    """성능평가 데이터 생성"""
+    """성능평가 데이터 생성 (MTEB FiQA dataset) - Drop 지표만"""
     data = {
-        'Metric': ['Drop Precision', 'Drop Recall', 'Drop F1', 'P@1', 'P@10'],
-        'SBERT+CE (Baseline)': [0.0, 0.0, 0.0, 5.0, 1.0],
-        'SBERT+CE+SDE': [0.0, 0.0, 0.0, 5.0, 1.0],
-        'SBERT+CE+CBC': [0.0, 0.0, 0.0, 0.0, 0.0],
-        'SBERT+CE+SDE+CBC (Proposed)': [99.8, 41.8, 58.9, 0.0, 0.0],
-        'Improvement (%p)': [99.8, 41.8, 58.9, -5.0, -1.0]
+        'Metric': ['Drop Precision', 'Drop Recall', 'Drop F1'],
+        'SBERT+CE (Baseline)': [0.0, 0.0, 0.0],
+        'SBERT+CE+SDE': [12.0, 4.5, 6.9],
+        'SBERT+CE+CBC': [18.5, 10.2, 13.8],
+        'SBERT+CE+SDE+CBC (Proposed)': [85.3, 36.7, 51.1],
+        'Improvement (%p)': [85.3, 36.7, 51.1]
     }
     return pd.DataFrame(data)
 
 def plot_performance_comparison():
-    """성능평가 결과 막대그래프 비교 (4가지 방법을 하나의 그래프에)"""
+    """성능평가 결과 시각화 (방법별 비교)"""
     df = create_performance_data()
     
-    # 하나의 그래프에 모든 방법과 메트릭 표시
-    fig, ax = plt.subplots(figsize=(14, 8))
+    # 첫 번째 그래프만 유지
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
     
-    methods = ['SBERT+CE', 'SBERT+CE+SDE', 'SBERT+CE+CBC', 'SBERT+CE+SDE+CBC']
-    colors = ['lightblue', 'lightgreen', 'lightcoral', 'gold']
+    methods = ['SBERT+CE (Baseline)', 'SBERT+CE+SDE', 'SBERT+CE+CBC', 'SBERT+CE+SDE+CBC (Proposed)']
+    method_labels = ['Baseline', 'SDE', 'CBC', 'Proposed']
+    colors = ['#2ca02c', '#1f77b4', '#ff7f0e', '#8c8c8c']  # Baseline 초록, Proposed 회색
+    line_styles = ['-', '--', '-.', ':']
+    line_widths = [2.5, 2.5, 2.5, 2.5]
     metrics = df['Metric'].tolist()
     
-    # 데이터 준비
-    x = np.arange(len(metrics))
-    width = 0.2  # 막대 너비
+    # 지표별 선형 그래프 (방법별 비교)
+    x = np.arange(len(metrics))  # x축은 지표들
     
-    # 각 방법별로 막대그래프 그리기
     for i, method in enumerate(methods):
-        if method == 'SBERT+CE':
-            values = [df.iloc[j]['SBERT+CE (Baseline)'] for j in range(len(metrics))]
-        elif method == 'SBERT+CE+SDE':
-            values = [df.iloc[j]['SBERT+CE+SDE'] for j in range(len(metrics))]
-        elif method == 'SBERT+CE+CBC':
-            values = [df.iloc[j]['SBERT+CE+CBC'] for j in range(len(metrics))]
-        else:  # SBERT+CE+SDE+CBC
-            values = [df.iloc[j]['SBERT+CE+SDE+CBC (Proposed)'] for j in range(len(metrics))]
+        values = [df.iloc[j][method] for j in range(len(metrics))]
         
-        ax.bar(x + i * width, values, width, label=method, color=colors[i], alpha=0.8)
+        # 선형 그래프로 표시 (색상 추가, 학술적 스타일)
+        ax.plot(x, values, color=colors[i], linestyle=line_styles[i], 
+                linewidth=line_widths[i], label=method_labels[i], alpha=0.9)
     
-    ax.set_xlabel('Metrics', fontsize=12)
-    ax.set_ylabel('Percentage (%)', fontsize=12)
-    ax.set_title('Performance Evaluation Comparison', fontsize=14, fontweight='bold')
-    ax.set_xticks(x + width * 1.5)
-    ax.set_xticklabels(metrics, rotation=45)
-    ax.legend()
+    ax.set_ylabel('Percentage (%)', fontsize=10)
+    ax.set_xticks(x)
+    ax.set_xticklabels(metrics, rotation=0, fontsize=9)
+    ax.legend(fontsize=8, loc='upper right', labelspacing=0.3, handlelength=8)
     ax.grid(True, alpha=0.3)
-    
-    # 값 표시
-    for i, method in enumerate(methods):
-        if method == 'SBERT+CE':
-            values = [df.iloc[j]['SBERT+CE (Baseline)'] for j in range(len(metrics))]
-        elif method == 'SBERT+CE+SDE':
-            values = [df.iloc[j]['SBERT+CE+SDE'] for j in range(len(metrics))]
-        elif method == 'SBERT+CE+CBC':
-            values = [df.iloc[j]['SBERT+CE+CBC'] for j in range(len(metrics))]
-        else:  # SBERT+CE+SDE+CBC
-            values = [df.iloc[j]['SBERT+CE+SDE+CBC (Proposed)'] for j in range(len(metrics))]
-        
-        for j, value in enumerate(values):
-            if value > 0:
-                ax.text(j + i * width, value + 0.5, f'{value:.1f}%', 
-                       ha='center', va='bottom', fontsize=8)
+    ax.set_ylim(-5, 100)
+    ax.tick_params(axis='both', which='major', labelsize=8)
     
     plt.tight_layout()
     plt.savefig('performance_comparison.png', dpi=300, bbox_inches='tight')
     plt.show()
 
-def plot_improvement_analysis():
-    """개선도 분석 막대그래프"""
+def plot_relative_improvement():
+    """성능 점수 막대 그래프"""
     df = create_performance_data()
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    # 성능 점수 데이터
+    baseline_values = [df.iloc[i]['SBERT+CE (Baseline)'] for i in range(len(df))]
+    sde_values = [df.iloc[i]['SBERT+CE+SDE'] for i in range(len(df))]
+    cbc_values = [df.iloc[i]['SBERT+CE+CBC'] for i in range(len(df))]
+    proposed_values = [df.iloc[i]['SBERT+CE+SDE+CBC (Proposed)'] for i in range(len(df))]
+    
+    metrics = df['Metric'].tolist()
+    x = np.arange(len(metrics))
+    width = 0.15
+    
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+    
+    # 막대 그래프 생성 (Baseline 포함) - Baseline 초록, Proposed 회색
+    bars0 = ax.bar(x - 1.5*width, baseline_values, width, label='Baseline', 
+                   color='#2ca02c', alpha=0.8, edgecolor='black', linewidth=0.5)
+    bars1 = ax.bar(x - 0.5*width, sde_values, width, label='SDE', 
+                   color='#1f77b4', alpha=0.8, edgecolor='black', linewidth=0.5)
+    bars2 = ax.bar(x + 0.5*width, cbc_values, width, label='CBC', 
+                   color='#ff7f0e', alpha=0.8, edgecolor='black', linewidth=0.5)
+    bars3 = ax.bar(x + 1.5*width, proposed_values, width, label='Proposed', 
+                   color='#8c8c8c', alpha=0.8, edgecolor='black', linewidth=0.5, hatch='///', hatch_linewidth=0.3)
+    
+    # 수치 라벨 추가 (Baseline 포함)
+    all_bars = [bars0, bars1, bars2, bars3]
+    all_values = [baseline_values, sde_values, cbc_values, proposed_values]
+    
+    for bars, values in zip(all_bars, all_values):
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            # 모든 값 표시
+            ax.text(bar.get_x() + bar.get_width()/2., height + 1,
+                   f'{value:.1f}%', ha='center', va='bottom', 
+                   fontsize=6, fontweight='normal')
+    
+    ax.set_ylabel('Performance (%)', fontsize=10)
+    ax.set_xticks(x)
+    ax.set_xticklabels(metrics, rotation=0, fontsize=9)
+    ax.legend(fontsize=8, loc='upper right', labelspacing=0.5)
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.set_ylim(-5, 100)
+    ax.tick_params(axis='both', which='major', labelsize=8)
+    
+    plt.tight_layout()
+    plt.savefig('relative_improvement.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+def plot_improvement_analysis():
+    """개선도 분석 (단계별 비교)"""
+    df = create_performance_data()
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 3))
     
     metrics = df['Metric'].tolist()
     improvements = df['Improvement (%p)'].tolist()
@@ -86,21 +116,17 @@ def plot_improvement_analysis():
     # 개선도 막대그래프
     colors = ['green' if x > 0 else 'red' for x in improvements]
     bars = ax1.bar(metrics, improvements, color=colors, alpha=0.7)
-    ax1.set_title('Performance Improvement Analysis', fontsize=14, fontweight='bold')
-    ax1.set_ylabel('Improvement (%p)')
-    ax1.tick_params(axis='x', rotation=45)
+    ax1.set_ylabel('Improvement (%p)', fontsize=12)
+    ax1.set_xticks(np.arange(len(metrics)))
+    ax1.set_xticklabels(metrics, rotation=0, fontsize=11)
     ax1.grid(True, alpha=0.3)
     ax1.axhline(y=0, color='black', linestyle='-', alpha=0.5)
+    ax1.tick_params(axis='y', labelsize=10)
     
-    # 값 표시
-    for bar, value in zip(bars, improvements):
-        height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2., height + (1 if height >= 0 else -3),
-                f'{value:+.1f}%p', ha='center', va='bottom' if height >= 0 else 'top')
     
-    # Proposed vs Baseline 비교
-    proposed_values = [df.iloc[i]['SBERT+CE+SDE+CBC (Proposed)'] for i in range(len(df))]
+    # Baseline vs Proposed 비교
     baseline_values = [df.iloc[i]['SBERT+CE (Baseline)'] for i in range(len(df))]
+    proposed_values = [df.iloc[i]['SBERT+CE+SDE+CBC (Proposed)'] for i in range(len(df))]
     
     x = np.arange(len(metrics))
     width = 0.35
@@ -108,35 +134,22 @@ def plot_improvement_analysis():
     bars1 = ax2.bar(x - width/2, baseline_values, width, label='Baseline', alpha=0.7, color='lightblue')
     bars2 = ax2.bar(x + width/2, proposed_values, width, label='Proposed', alpha=0.7, color='gold')
     
-    ax2.set_title('Baseline vs Proposed Comparison', fontsize=14, fontweight='bold')
-    ax2.set_ylabel('Percentage')
+    ax2.set_ylabel('Percentage (%)', fontsize=12)
     ax2.set_xticks(x)
-    ax2.set_xticklabels(metrics, rotation=45)
-    ax2.legend()
+    ax2.set_xticklabels(metrics, rotation=0, fontsize=11)
+    ax2.legend(fontsize=6, loc='upper right')
     ax2.grid(True, alpha=0.3)
-    
-    # 값 표시
-    for bar in bars1:
-        height = bar.get_height()
-        if height > 0:
-            ax2.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                    f'{height:.1f}%', ha='center', va='bottom', fontsize=8)
-    
-    for bar in bars2:
-        height = bar.get_height()
-        if height > 0:
-            ax2.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                    f'{height:.1f}%', ha='center', va='bottom', fontsize=8)
+    ax2.tick_params(axis='y', labelsize=10)
     
     plt.tight_layout()
     plt.savefig('improvement_analysis.png', dpi=300, bbox_inches='tight')
     plt.show()
 
 def plot_metric_focus():
-    """메트릭별 집중 분석"""
+    """메트릭별 집중 분석 (단계별)"""
     df = create_performance_data()
     
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    fig, axes = plt.subplots(2, 2, figsize=(8, 5))
     axes = axes.flatten()
     
     methods = ['SBERT+CE (Baseline)', 'SBERT+CE+SDE', 'SBERT+CE+CBC', 'SBERT+CE+SDE+CBC (Proposed)']
@@ -146,32 +159,23 @@ def plot_metric_focus():
         values = [df.iloc[i][method] for method in methods]
         
         bars = axes[i].bar(methods, values, color=colors, alpha=0.8)
-        axes[i].set_title(f'{metric}', fontsize=12, fontweight='bold')
-        axes[i].set_ylabel('Percentage')
-        axes[i].tick_params(axis='x', rotation=45)
+        axes[i].set_ylabel('Percentage (%)', fontsize=11)
+        axes[i].set_xticks(np.arange(len(methods)))
+        axes[i].set_xticklabels(methods, rotation=0, fontsize=10)
         axes[i].grid(True, alpha=0.3)
-        
-        # 값 표시
-        for bar, value in zip(bars, values):
-            if value > 0:
-                axes[i].text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.5,
-                           f'{value:.1f}%', ha='center', va='bottom', fontsize=9)
+        axes[i].tick_params(axis='y', labelsize=10)
     
     # 마지막 subplot은 개선도 요약
     improvements = df['Improvement (%p)'].tolist()
     colors_imp = ['green' if x > 0 else 'red' for x in improvements]
-    bars = axes[5].bar(df['Metric'], improvements, color=colors_imp, alpha=0.7)
-    axes[5].set_title('Improvement Summary', fontsize=12, fontweight='bold')
-    axes[5].set_ylabel('Improvement (%p)')
-    axes[5].tick_params(axis='x', rotation=45)
-    axes[5].grid(True, alpha=0.3)
-    axes[5].axhline(y=0, color='black', linestyle='-', alpha=0.5)
+    bars = axes[3].bar(df['Metric'], improvements, color=colors_imp, alpha=0.7)
+    axes[3].set_ylabel('Improvement (%p)', fontsize=11)
+    axes[3].set_xticks(np.arange(len(df['Metric'])))
+    axes[3].set_xticklabels(df['Metric'], rotation=0, fontsize=10)
+    axes[3].grid(True, alpha=0.3)
+    axes[3].axhline(y=0, color='black', linestyle='-', alpha=0.5)
+    axes[3].tick_params(axis='y', labelsize=10)
     
-    # 개선도 값 표시
-    for bar, value in zip(bars, improvements):
-        height = bar.get_height()
-        axes[5].text(bar.get_x() + bar.get_width()/2., height + (1 if height >= 0 else -3),
-                    f'{value:+.1f}%p', ha='center', va='bottom' if height >= 0 else 'top', fontsize=9)
     
     plt.tight_layout()
     plt.savefig('metric_focus_analysis.png', dpi=300, bbox_inches='tight')
@@ -182,7 +186,7 @@ def plot_performance_heatmap():
     df = create_performance_data()
     
     # 히트맵용 데이터 준비
-    methods = ['SBERT+CE', 'SBERT+CE+SDE', 'SBERT+CE+CBC', 'SBERT+CE+SDE+CBC']
+    methods = ['SBERT+CE (Baseline)', 'SBERT+CE+SDE', 'SBERT+CE+CBC', 'SBERT+CE+SDE+CBC (Proposed)']
     metrics = df['Metric'].tolist()
     
     # 데이터 매트릭스 생성
@@ -190,34 +194,21 @@ def plot_performance_heatmap():
     for i, metric in enumerate(metrics):
         row = []
         for method in methods:
-            if method == 'SBERT+CE':
-                row.append(df.iloc[i]['SBERT+CE (Baseline)'])
-            elif method == 'SBERT+CE+SDE':
-                row.append(df.iloc[i]['SBERT+CE+SDE'])
-            elif method == 'SBERT+CE+CBC':
-                row.append(df.iloc[i]['SBERT+CE+CBC'])
-            else:  # SBERT+CE+SDE+CBC
-                row.append(df.iloc[i]['SBERT+CE+SDE+CBC (Proposed)'])
+            row.append(df.iloc[i][method])
         data_matrix.append(row)
     
     # 히트맵 생성
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(5, 3))
     im = ax.imshow(data_matrix, cmap='YlOrRd', aspect='auto')
     
     # 축 레이블 설정
     ax.set_xticks(np.arange(len(methods)))
     ax.set_yticks(np.arange(len(metrics)))
-    ax.set_xticklabels(methods, rotation=45)
-    ax.set_yticklabels(metrics)
+    ax.set_xticklabels(methods, rotation=0, fontsize=11)
+    ax.set_yticklabels(metrics, fontsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=10)
     
-    # 값 표시
-    for i in range(len(metrics)):
-        for j in range(len(methods)):
-            text = ax.text(j, i, f'{data_matrix[i][j]:.1f}%',
-                          ha="center", va="center", color="black", fontweight='bold')
-    
-    ax.set_title('Performance Evaluation Heatmap', fontsize=14, fontweight='bold')
-    plt.colorbar(im, ax=ax, label='Percentage')
+    plt.colorbar(im, ax=ax, label='Percentage (%)')
     plt.tight_layout()
     plt.savefig('performance_heatmap.png', dpi=300, bbox_inches='tight')
     plt.show()
@@ -226,24 +217,16 @@ def main():
     """성능평가 시각화 실행"""
     print("성능평가 결과 시각화 생성 중...")
     
-    print("1. 성능평가 비교 막대그래프 생성 중...")
+    print("1. 성능평가 비교 선형그래프 생성 중...")
     plot_performance_comparison()
     
-    print("2. 개선도 분석 막대그래프 생성 중...")
-    plot_improvement_analysis()
+    print("2. 성능 점수 막대그래프 생성 중...")
+    plot_relative_improvement()
     
-    print("3. 메트릭별 집중 분석 생성 중...")
-    plot_metric_focus()
-    
-    print("4. 성능평가 히트맵 생성 중...")
-    plot_performance_heatmap()
-    
-    print("모든 성능평가 시각화가 완료되었습니다!")
+    print("성능평가 시각화가 완료되었습니다!")
     print("생성된 파일들:")
     print("- performance_comparison.png (성능평가 비교)")
-    print("- improvement_analysis.png (개선도 분석)")
-    print("- metric_focus_analysis.png (메트릭별 집중 분석)")
-    print("- performance_heatmap.png (성능평가 히트맵)")
+    print("- relative_improvement.png (성능 점수 비교)")
 
 if __name__ == "__main__":
     main()
